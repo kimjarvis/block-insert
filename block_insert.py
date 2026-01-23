@@ -14,12 +14,12 @@ def indent_lines(lines, spaces):
 
 
 def extract_block_info(marker_line, insert_path):
-    match = re.match(r"(\s*)# (block insert|Example usage)\s+(\S+)(?:\s+(-?\d+))?", marker_line)
+    match = re.match(r"(\s*)(?:#|<!--)\s*block insert\s+(\S+)(?:\s+(-?\d+))?\s*(?:-->)?", marker_line)
     if not match:
         return None
     leading_ws = match.group(1)
-    file_name = match.group(3)
-    extra_indent = int(match.group(4)) if match.group(4) else 0
+    file_name = match.group(2)
+    extra_indent = int(match.group(3)) if match.group(3) else 0
     original_indent = len(leading_ws)
     total_indent = original_indent + extra_indent
     file_path = Path(insert_path) / file_name
@@ -27,12 +27,11 @@ def extract_block_info(marker_line, insert_path):
 
 
 def is_start_marker(line):
-    return re.fullmatch(r"\s*# (block insert|Example usage)\s+\S+.*", line.strip()) is not None
+    return re.fullmatch(r"\s*(?:#|<!--)\s*block insert\s+\S+.*(?:-->)?", line.strip()) is not None
 
 
 def is_end_marker(line):
-    return re.fullmatch(r"\s*# block end\s*", line.strip()) is not None
-
+    return re.fullmatch(r"\s*(?:#|<!--)\s*block end\s*(?:-->)?", line.strip()) is not None
 
 def process_file(source_file, insert_path, clear_mode=False, remove_mode=False):
     try:

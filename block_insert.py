@@ -166,6 +166,17 @@ def process_path(path, insert_path, clear_mode=False, remove_mode=False):
         for md_file in path.rglob("*.md"):
             process_file(md_file, insert_path, clear_mode, remove_mode)
 
+def block_insert(source_path: str, insert_path: str, clear_mode=False, remove_mode=False):
+    """Insert code blocks into Python files based on markers.
+
+    Args:
+        source_path (Path): Source file or directory.
+        insert_path (Path): Base path for block files.
+        clear_mode (bool): Clear blocks without insertion.
+        remove_mode (bool): Clear blocks and then remove all marker lines.
+    """
+    process_path(source_path, insert_path, clear_mode, remove_mode)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Insert code blocks into Python files based on markers.")
@@ -176,7 +187,8 @@ def main():
     group.add_argument("--remove", action="store_true", help="Clear blocks and then remove all marker lines.")
     args = parser.parse_args()
 
-    process_path(args.source_path, args.insert_path, args.clear, args.remove)
+    # process_path(args.source_path, args.insert_path, args.clear, args.remove)
+    block_insert(source_path=args.source_path, insert_path=args.insert_path, clear_mode=args.clear, remove_mode=args.remove)
 
 
 if __name__ == "__main__":

@@ -15,39 +15,43 @@ def indent_lines(lines, spaces):
 def extract_block_info(marker_line, insert_path):
     # Match Python-style marker (# block insert ...)
     match = re.match(r"(\s*)#\s*block insert\s+(\S+)(?:\s+(-?\d+))?", marker_line)
-    if not match:
-        # Match Markdown-style marker (<!-- block insert ... -->)
-        match = re.match(r"(\s*)<!--\s*block insert\s+(\S+)(?:\s+(-?\d+))?\s*-->", marker_line)
-        if not match:
-            return None
+    if match:
+        leading_ws = match.group(1)
+        file_name = match.group(2)
+        extra_indent = int(match.group(3)) if match.group(3) else 0
+        original_indent = len(leading_ws)
+        total_indent = original_indent + extra_indent
+        file_path = Path(insert_path) / file_name
+        return file_path, total_indent, original_indent, "python"
 
-    leading_ws = match.group(1)
-    file_name = match.group(2)
-    extra_indent = int(match.group(3)) if match.group(3) else 0
-    original_indent = len(leading_ws)
-    total_indent = original_indent + extra_indent
-    file_path = Path(insert_path) / file_name
-    return file_path, total_indent, original_indent
+    # Match Markdown-style marker (<!-- block insert ... -->)
+    match = re.match(r"(\s*)<!--\s*block insert\s+(\S+)(?:\s+(-?\d+))?\s*-->", marker_line)
+    if match:
+        leading_ws = match.group(1)
+        file_name = match.group(2)
+        extra_indent = int(match.group(3)) if match.group(3) else 0
+        original_indent = len(leading_ws)
+        total_indent = original_indent + extra_indent
+        file_path = Path(insert_path) / file_name
+        return file_path, total_indent, original_indent, "markdown"
+
+    return None
 
 
 def is_start_marker(line):
-    line = line.strip()
-    # Check for Python-style marker (# block insert ...)
-    if re.fullmatch(r"\s*#\s*block insert\s+\S+.*", line):
+    s = line.strip()
+    if re.fullmatch(r"#\s*block insert\s+\S+.*", s):
         return True, "python"
-    # Check for Markdown-style marker (<!-- block insert ... -->)
-    if re.fullmatch(r"\s*<!--\s*block insert\s+\S+.*-->", line):
+    if re.fullmatch(r"<!--\s*block insert\s+\S+.*-->", s):
         return True, "markdown"
-    return False
+    return False, None
 
 
 def is_end_marker(line):
-    line = line.strip()
-    # Check for Python-style marker (# block end)
-    if re.fullmatch(r"\s*#\s*block end\s*", line):
+    s = line.strip()
+    if re.fullmatch(r"#\s*block end\s*", s):
         return True
-    # Check for Markdown-style marker (<!-- block end -->)
-    if re.fullmatch(r"\s*<!--\s*block end\s*-->", line):
+    if re.fullmatch(r"<!--\s*block end\s*-->", s):
         return True
     return False
 
@@ -63,14 +67,13 @@ def process_file(source_file, insert_path, clear_mode=False, remove_mode=False):
     output = []
     i = 0
     changed = False
-    block_type = "none"  # Default block type
 
     while i < len(original_lines):
         line = original_lines[i]
         info = extract_block_info(line, insert_path)
 
         if info:
-            file_path, total_indent, orig_indent = info
+            file_path, total_indent, orig_indent, block_type = info
 
             # Find end marker
             end_i = None
@@ -99,13 +102,15 @@ def process_file(source_file, insert_path, clear_mode=False, remove_mode=False):
                 except FileNotFoundError:
                     print(f"Warning: Block file '{file_path}' not found.")
 
-                # Add end marker
+                # Add matching end marker
                 if block_type == "python":
                     replacement.append(f"{' ' * orig_indent}# block end\n")
                 elif block_type == "markdown":
                     replacement.append(f"{' ' * orig_indent}<!-- block end -->\n")
                 else:
+                    # Fallback (should not occur)
                     replacement.append(f"{' ' * orig_indent}# block end\n")
+
                 output.extend(replacement)
                 changed = True
 
@@ -130,17 +135,10 @@ def process_file(source_file, insert_path, clear_mode=False, remove_mode=False):
             lines_after_clear = f.readlines()
 
         final_lines = []
-
         for line in lines_after_clear:
-            is_start = is_start_marker(line)
-            end_result = is_end_marker(line)
-
-            # Extract block type from is_end_marker's return value
-            if end_result[0]:  # If it's an end marker
-                block_type = end_result[1]  # Set block_type to the returned string
-
-            # Include the line in final_lines only if it's neither a start nor an end marker
-            if not (is_start or end_result[0]):
+            is_start, _ = is_start_marker(line)
+            is_end = is_end_marker(line)
+            if not (is_start or is_end):
                 final_lines.append(line)
 
         if final_lines != lines_after_clear:

@@ -9,12 +9,16 @@ def is_start_marker(line):
     s = line.strip()
     if re.fullmatch(r"#\s*block extract\s+\S+.*", s):
         return True
+    if re.fullmatch(r"<!--\s*block extract\s+\S+.*-->", s):
+        return True
     return False
 
 
 def is_end_marker(line):
     s = line.strip()
     if re.fullmatch(r"#\s*block end\s*", s):
+        return True
+    if re.fullmatch(r"<!--\s*block end\s*-->", s):
         return True
     return False
 
@@ -38,6 +42,17 @@ def extract_block_info(marker_line, extract_path):
         total_indent = original_indent + extra_indent
         file_path = Path(extract_path) / file_name
         return file_path, total_indent
+
+    match = re.match(r"(\s*)<!--\s*block extract\s+(\S+)(?:\s+(-?\d+))?\s*-->", marker_line)
+    if match:
+        leading_ws = match.group(1)
+        file_name = match.group(2)
+        extra_indent = int(match.group(3)) if match.group(3) else 0
+        original_indent = len(leading_ws)
+        total_indent = original_indent + extra_indent
+        file_path = Path(extract_path) / file_name
+        return file_path, total_indent
+
     return None
 
 
@@ -96,7 +111,7 @@ def process_path(path, extract_path):
             process_file(file, extract_path)
 
 
-def block_insert(source_path, extract_path):
+def block_extract(source_path, extract_path):
     process_path(source_path, extract_path)
 
 
@@ -106,7 +121,7 @@ def main():
     parser.add_argument("--extract_path", required=True, help="Base path for block files.")
     args = parser.parse_args()
 
-    block_insert(source_path=args.source_path, extract_path=args.extract_path)
+    block_extract(source_path=args.source_path, extract_path=args.extract_path)
 
 
 if __name__ == "__main__":

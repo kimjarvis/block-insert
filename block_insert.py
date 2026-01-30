@@ -27,14 +27,20 @@ def indent_lines(lines, spaces):
     indented = []
     for line in lines:
         stripped = line.rstrip("\n")
-        # Preserve original newline structure
-        if line.endswith("\n"):
-            indented_line = f"{' ' * max(0, spaces)}{stripped}\n"
+        if spaces >= 0:
+            # Positive indent: add spaces
+            indented_line = f"{' ' * spaces}{stripped}\n"
         else:
-            indented_line = f"{' ' * max(0, spaces)}{stripped}"
+            # Negative indent: remove spaces from the beginning
+            # Remove up to |spaces| spaces, but not beyond the first non-space character
+            spaces_to_remove = -spaces
+            # Count leading spaces in the original line
+            leading_spaces = len(stripped) - len(stripped.lstrip())
+            # Remove spaces, but not more than what exists
+            remove_count = min(spaces_to_remove, leading_spaces)
+            indented_line = stripped[remove_count:] + "\n"
         indented.append(indented_line)
     return indented
-
 
 def extract_block_info(marker_line, insert_path):
     match = re.match(r"(\s*)#\s*block insert\s+(\S+)(?:\s+(-?\d+))?", marker_line)

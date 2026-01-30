@@ -5,6 +5,18 @@ import re
 from pathlib import Path
 
 
+class UnclosedBlockError(Exception):
+    """Exception raised when a block extract marker is found without a corresponding end marker."""
+    def __init__(self, source_file, line_number, line_content=""):
+        self.source_file = source_file
+        self.line_number = line_number
+        self.line_content = line_content
+        message = (f"Unclosed block starting at line {line_number} "
+                  f"in file '{source_file}'. "
+                  f"Expected end marker '# block end' or '<!-- block end -->'.")
+        super().__init__(message)
+
+
 def is_start_marker(line):
     s = line.strip()
     if re.fullmatch(r"#\s*block extract\s+\S+.*", s):
@@ -82,6 +94,7 @@ def process_file(source_file, extract_path):
             info = extract_block_info(line, extract_path)
             if info:
                 file_path, total_indent = info
+                start_line = i + 1  # 1-based line number for error reporting
                 i += 1
                 block_lines = []
                 while i < len(original_lines):
@@ -91,8 +104,8 @@ def process_file(source_file, extract_path):
                     block_lines.append(current_line)
                     i += 1
                 else:
-                    print(f"Warning: Unclosed block starting at {source_file}:{i - len(block_lines)}")
-                    break
+                    # Reached end of file without finding end marker
+                    raise UnclosedBlockError(source_file, start_line, line.strip())
 
                 # Ensure parent directories exist
                 file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +136,14 @@ def process_path(path, extract_path):
 
 
 def block_extract(source_path, extract_path):
-    process_path(source_path, extract_path)
+    try:
+        process_path(source_path, extract_path)
+    except UnclosedBlockError as e:
+        print(f"Error: {e}")
+        raise  # Re-raise to exit with non-zero status
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise
 
 
 def main():
@@ -132,7 +152,14 @@ def main():
     parser.add_argument("--extract_path", required=True, help="Base path for block files.")
     args = parser.parse_args()
 
-    block_extract(source_path=args.source_path, extract_path=args.extract_path)
+    try:
+        block_extract(source_path=args.source_path, extract_path=args.extract_path)
+    except UnclosedBlockError:
+        # Exit with non-zero status to indicate error
+        exit(1)
+    except Exception as e:
+        print(f"Fatal error: {e}")
+        exit(1)
 
 
 if __name__ == "__main__":

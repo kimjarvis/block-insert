@@ -17,9 +17,9 @@ def run_and_compare_file_test(func, source_filename, test_type="insert"):
     # Determine function to call and paths based on test type
     if test_type == "insert":
         func(
-            source_path=f"tests/sources/{source_filename}",
-            insert_path="tests/snippets",
-            output_path="tests/outputs"
+            source_file=f"tests/sources/{source_filename}",
+            insert_directory_prefix="tests/snippets",
+            output_directory="tests/outputs"
         )
         output_file = f"tests/outputs/{base_name}.md"
     else:  # extract
@@ -77,9 +77,9 @@ def test_done_already():
     """Special test - do not modify this test."""
     # Call the function that generates the output file
     block_insert(
-        source_path="tests/sources/done_already.md",
-        insert_path="tests/snippets",
-        output_path="tests/outputs"
+        source_file="tests/sources/done_already.md",
+        insert_directory_prefix="tests/snippets",
+        output_directory="tests/outputs"
     )
 
     # Define paths to the generated and expected files

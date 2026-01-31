@@ -22,7 +22,8 @@ def indent_lines(lines, spaces):
         indented.append(indented_line)
     return indented
 
-def extract_block_info(marker_line, insert_path):
+
+def extract_block_info(marker_line, insert_directory_prefix):
     match = re.match(r"(\s*)#\s*block insert\s+(\S+)(?:\s+(-?\d+))?", marker_line)
     if match:
         leading_ws = match.group(1)
@@ -30,7 +31,7 @@ def extract_block_info(marker_line, insert_path):
         extra_indent = int(match.group(3)) if match.group(3) else 0
         original_indent = len(leading_ws)
         total_indent = original_indent + extra_indent
-        file_path = Path(insert_path) / file_name
+        file_path = Path(insert_directory_prefix) / file_name
         return file_path, total_indent, original_indent, "python"
 
     match = re.match(r"(\s*)<!--\s*block insert\s+(\S+)(?:\s+(-?\d+))?\s*-->", marker_line)
@@ -40,7 +41,7 @@ def extract_block_info(marker_line, insert_path):
         extra_indent = int(match.group(3)) if match.group(3) else 0
         original_indent = len(leading_ws)
         total_indent = original_indent + extra_indent
-        file_path = Path(insert_path) / file_name
+        file_path = Path(insert_directory_prefix) / file_name
         return file_path, total_indent, original_indent, "markdown"
 
     return None
@@ -64,7 +65,7 @@ def is_end_marker(line):
     return False
 
 
-def process_file(source_file, insert_path, output_root=None, source_root=None, clear_mode=False):
+def process_file(source_file, insert_directory_prefix, output_root=None, source_root=None, clear_mode=False):
     try:
         with open(source_file, "r") as f:
             original_lines = f.readlines()
@@ -75,25 +76,25 @@ def process_file(source_file, insert_path, output_root=None, source_root=None, c
     output = []
     i = 0
     changed = False
-    source_path = Path(source_file).resolve()
+    source_file = Path(source_file).resolve()
 
     # Determine output path
     if output_root is None:
         # In-place modification
-        output_path = source_path
+        output_directory = source_file
     else:
         # Write to output directory preserving relative structure
         if source_root is None:
             # Single file case: output directly to output_root/filename
-            output_path = output_root / source_path.name
+            output_directory = output_root / source_file.name
         else:
             # Directory case: preserve relative path under output_root
-            rel_path = source_path.relative_to(source_root)
-            output_path = output_root / rel_path
+            rel_path = source_file.relative_to(source_root)
+            output_directory = output_root / rel_path
 
     while i < len(original_lines):
         line = original_lines[i]
-        info = extract_block_info(line, insert_path)
+        info = extract_block_info(line, insert_directory_prefix)
 
         if info:
             file_path, total_indent, orig_indent, block_type = info
@@ -170,84 +171,89 @@ def process_file(source_file, insert_path, output_root=None, source_root=None, c
     # Write output if changed
     if output != original_lines:
         # Ensure output directory exists
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w") as f:
+        output_directory.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_directory, "w") as f:
             f.writelines(output)
         action = "Created" if output_root else "Updated"
-        print(f"{action} file: {output_path}")
+        print(f"{action} file: {output_directory}")
 
 
-def process_path(source_path, insert_path, output_path=None, clear_mode=False):
-    source_path = Path(source_path).expanduser().resolve()
-    insert_path = Path(insert_path).expanduser().resolve()
+def process_path(source_file, insert_directory_prefix, output_directory=None, clear_mode=False):
+    source_file = Path(source_file).expanduser().resolve()
+    insert_directory_prefix = Path(insert_directory_prefix).expanduser().resolve()
 
-    if not source_path.exists():
-        print(f"Error: Source path '{source_path}' does not exist.")
-        return
-    if not insert_path.is_dir():
-        print(f"Error: Insert path '{insert_path}' is not a directory.")
-        return
+    if not source_file.exists():
+        raise ValueError(f"Source path '{source_file}' does not exist.")
+
+    # Ensure source_file is a file
+    if not source_file.is_file():
+        raise ValueError(f"Source path '{source_file}' must be a file, not a directory.")
+
+    # Ensure source_file has either .py or .md extension
+    if source_file.suffix.lower() not in ['.py', '.md']:
+        raise ValueError(f"Source path '{source_file}' must be a .py or .md file, not '{source_file.suffix}'.")
+
+    # Ensure insert_directory_prefix is a directory
+    if not insert_directory_prefix.is_dir():
+        raise ValueError(f"Insert path '{insert_directory_prefix}' is not a directory.")
 
     # Resolve output path if provided
-    output_root = Path(output_path).expanduser().resolve() if output_path else None
-    if output_root and not output_root.exists():
-        output_root.mkdir(parents=True, exist_ok=True)
+    output_root = None
+    if output_directory:
+        output_root = Path(output_directory).expanduser().resolve()
+        # Ensure output_directory is a directory
+        if output_root.exists() and not output_root.is_dir():
+            raise ValueError(f"Output path '{output_directory}' must be a directory, not a file.")
+        if not output_root.exists():
+            output_root.mkdir(parents=True, exist_ok=True)
 
-    # Prevent processing files inside output directory when scanning source directory
-    if source_path.is_dir() and output_root:
-        if output_root.resolve() in source_path.resolve().parents or output_root == source_path.resolve():
-            print(f"Error: Output path must not be inside or equal to source path")
-            return
+        # Check that source file is not within the output directory
+        try:
+            # Check if source_file is inside output_root
+            source_file.relative_to(output_root)
+            # If the above doesn't raise an exception, source_file is inside output_root
+            raise ValueError(f"Source file '{source_file}' must not be inside output directory '{output_root}'.")
+        except ValueError:
+            # ValueError is raised if source_file is NOT inside output_root
+            # This is the expected case, so we continue
+            pass
 
-    if source_path.is_file():
-        # Skip if this file is inside the output directory (prevent recursive processing)
-        if output_root and source_path.resolve().parent == output_root.resolve():
-            return
-        process_file(source_path, insert_path, output_root=output_root, clear_mode=clear_mode)
-    else:
-        # Directory processing: collect source files excluding output directory contents
-        source_root = source_path
-        py_files = [f for f in source_path.rglob("*.py")
-                    if not (output_root and output_root in f.resolve().parents)]
-        md_files = [f for f in source_path.rglob("*.md")
-                    if not (output_root and output_root in f.resolve().parents)]
-
-        for file in py_files:
-            process_file(file, insert_path, output_root=output_root, source_root=source_root, clear_mode=clear_mode)
-        for file in md_files:
-            process_file(file, insert_path, output_root=output_root, source_root=source_root, clear_mode=clear_mode)
+    process_file(source_file, insert_directory_prefix, output_root=output_root, clear_mode=clear_mode)
 
 
-def block_insert(source_path: str, insert_path: str, output_path: str = None, clear_mode: bool = False):
+def block_insert(source_file: str, insert_directory_prefix: str, output_directory: str = None, clear_mode: bool = False):
     """Insert code blocks into Python/Markdown files based on markers.
-
-    Args:
-        source_path (str): Source file or directory.
-        insert_path (str): Base path for block files.
-        output_path (str, optional): Directory where generated files will be written.
-            If None, source files are modified in-place.
-        clear_mode (bool): Clear blocks without insertion.
     """
-    process_path(source_path, insert_path, output_path, clear_mode)
+    try:
+        process_path(source_file, insert_directory_prefix, output_directory, clear_mode)
+    except ValueError as e:
+        # Re-raise the exception as requested
+        raise e
 
 
 def main():
     parser = argparse.ArgumentParser(description="Insert code blocks into Python/Markdown files based on markers.")
-    parser.add_argument("--source_path", required=True, help="Source file or directory.")
-    parser.add_argument("--insert_path", required=True, help="Base path for block files.")
-    parser.add_argument("--output_path",
+    parser.add_argument("--source_file", required=True, help="Source file.")
+    parser.add_argument("--insert_directory_prefix", required=True, help="Base path for block files.")
+    parser.add_argument("--output_directory",
                         help="Directory for generated files (preserves structure). If omitted, modifies sources in-place.")
     parser.add_argument("--clear", action="store_true", help="Clear blocks without insertion.")
     args = parser.parse_args()
 
-    # Execute block insertion
-    block_insert(
-        source_path=args.source_path,
-        insert_path=args.insert_path,
-        output_path=args.output_path,
-        clear_mode=args.clear
-    )
+    try:
+        # Execute block insertion
+        block_insert(
+            source_file=args.source_file,
+            insert_directory_prefix=args.insert_directory_prefix,
+            output_directory=args.output_directory,
+            clear_mode=args.clear
+        )
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    exit(main())

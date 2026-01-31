@@ -69,7 +69,7 @@ def indent_lines(lines, spaces):
     return indented
 
 
-def extract_block_info(marker_line, extract_path):
+def extract_block_info(marker_line, extract_directory_prefix):
     match = re.match(r"(\s*)#\s*block extract\s+(\S+)(?:\s+(-?\d+))?", marker_line)
     if match:
         leading_ws = match.group(1)
@@ -77,7 +77,7 @@ def extract_block_info(marker_line, extract_path):
         extra_indent = int(match.group(3)) if match.group(3) else 0
         original_indent = len(leading_ws)
         total_indent = original_indent + extra_indent
-        file_path = Path(extract_path) / file_name
+        file_path = Path(extract_directory_prefix) / file_name
         return file_path, total_indent
 
     match = re.match(r"(\s*)<!--\s*block extract\s+(\S+)(?:\s+(-?\d+))?\s*-->", marker_line)
@@ -87,13 +87,13 @@ def extract_block_info(marker_line, extract_path):
         extra_indent = int(match.group(3)) if match.group(3) else 0
         original_indent = len(leading_ws)
         total_indent = original_indent + extra_indent
-        file_path = Path(extract_path) / file_name
+        file_path = Path(extract_directory_prefix) / file_name
         return file_path, total_indent
 
     return None
 
 
-def process_file(source_file, extract_path):
+def process_file(source_file, extract_directory_prefix):
     try:
         with open(source_file, "r") as f:
             original_lines = f.readlines()
@@ -123,7 +123,7 @@ def process_file(source_file, extract_path):
                 raise OrphanedEndMarkerError(source_file, i + 1,
                                              "Found block extract marker without closing previous block.")
 
-            info = extract_block_info(line, extract_path)
+            info = extract_block_info(line, extract_directory_prefix)
             if info:
                 file_path, total_indent = info
                 start_line = i + 1  # 1-based line number for error reporting
@@ -155,32 +155,32 @@ def process_file(source_file, extract_path):
         i += 1
 
 
-def process_path(path, extract_path):
+def process_path(path, extract_directory_prefix):
     path = Path(path).expanduser().resolve()
-    extract_path = Path(extract_path).expanduser().resolve()
+    extract_directory_prefix = Path(extract_directory_prefix).expanduser().resolve()
 
     # Raise FileNotFoundError if the source path doesn't exist
     if not path.exists():
         raise FileNotFoundError(f"Error: Source path '{path}' does not exist.")
 
     # Raise FileNotFoundError if the extract directory doesn't exist
-    if not extract_path.exists():
-        raise FileNotFoundError(f"Error: Extract path '{extract_path}' does not exist.")
+    if not extract_directory_prefix.exists():
+        raise FileNotFoundError(f"Error: Extract path '{extract_directory_prefix}' does not exist.")
 
-    # Raise an error if extract_path exists but is not a directory
-    if not extract_path.is_dir():
-        raise NotADirectoryError(f"Error: Extract path '{extract_path}' is not a directory.")
+    # Raise an error if extract_directory_prefix exists but is not a directory
+    if not extract_directory_prefix.is_dir():
+        raise NotADirectoryError(f"Error: Extract path '{extract_directory_prefix}' is not a directory.")
 
     if path.is_file():
-        process_file(path, extract_path)
+        process_file(path, extract_directory_prefix)
     else:
         for file in path.rglob("*.py"):
-            process_file(file, extract_path)
+            process_file(file, extract_directory_prefix)
 
 
-def block_extract(source_path, extract_path):
+def block_extract(source_path, extract_directory_prefix):
     try:
-        process_path(source_path, extract_path)
+        process_path(source_path, extract_directory_prefix)
     except (UnclosedBlockError, OrphanedEndMarkerError) as e:
         print(f"Error: {e}")
         raise  # Re-raise to exit with non-zero status
@@ -195,11 +195,11 @@ def block_extract(source_path, extract_path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source_path", required=True, help="Source file or directory.")
-    parser.add_argument("--extract_path", required=True, help="Base path for block files.")
+    parser.add_argument("--extract_directory_prefix", required=True, help="Base path for block files.")
     args = parser.parse_args()
 
     try:
-        block_extract(source_path=args.source_path, extract_path=args.extract_path)
+        block_extract(source_path=args.source_path, extract_directory_prefix=args.extract_directory_prefix)
     except (UnclosedBlockError, OrphanedEndMarkerError, FileNotFoundError, NotADirectoryError, ValueError):
         # Exit with non-zero status to indicate error
         exit(1)

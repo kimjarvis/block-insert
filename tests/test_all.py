@@ -25,7 +25,7 @@ def run_and_compare_file_test(func, source_filename, test_type="insert"):
     else:  # extract
         func(
             source_path=f"tests/sources/{source_filename}",
-            extract_path="tests/outputs",
+            extract_directory_prefix="tests/outputs",
         )
         output_file = f"tests/outputs/{base_name}.md"
 
@@ -94,7 +94,7 @@ def test_insert_orphaned_end_marker():
     with pytest.raises(OrphanedEndMarkerError) as exc_info:
         block_extract(
             source_path="tests/sources/insert_orphaned_end_marker.md",
-            extract_path="tests/snippets"
+            extract_directory_prefix="tests/snippets"
         )
 
     assert "Orphaned block end marker" in str(exc_info.value)
@@ -110,7 +110,7 @@ def test_unclosed_block():
     with pytest.raises(UnclosedBlockError) as exc_info:
         block_extract(
             source_path="tests/sources/extract_missing_end.md",
-            extract_path="tests/snippets"
+            extract_directory_prefix="tests/snippets"
         )
 
     # Optional: Verify exception details
@@ -125,7 +125,7 @@ def test_extract_orphaned_end_marker():
     with pytest.raises(OrphanedEndMarkerError) as exc_info:
         block_extract(
             source_path="tests/sources/extract_orphaned_end_marker.md",
-            extract_path="tests/snippets"
+            extract_directory_prefix="tests/snippets"
         )
 
     assert "Orphaned block end marker" in str(exc_info.value)
@@ -141,7 +141,7 @@ def test_extract_orphaned_begin_marker():
     with pytest.raises(UnclosedBlockError) as exc_info:
         block_extract(
             source_path="tests/sources/extract_orphaned_begin_marker.md",
-            extract_path="tests/snippets"
+            extract_directory_prefix="tests/snippets"
         )
 
     assert "Unclosed block" in str(exc_info.value)
@@ -156,7 +156,7 @@ def test_extract_nested_markers():
     with pytest.raises(OrphanedEndMarkerError) as exc_info:
         block_extract(
             source_path="tests/sources/extract_nested_markers.md",
-            extract_path="tests/snippets"
+            extract_directory_prefix="tests/snippets"
         )
 
     # Verify error message contains expected information

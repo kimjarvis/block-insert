@@ -151,23 +151,3 @@ def block_extract(source_path, extract_directory_prefix):
         raise
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--source_path", required=True, help="Source file or directory.")
-    parser.add_argument("--extract_directory_prefix", required=True, help="Base path for block files.")
-    args = parser.parse_args()
-
-    try:
-        block_extract(source_path=args.source_path, extract_directory_prefix=args.extract_directory_prefix)
-    except (UnclosedBlockError, OrphanedExtractEndMarkerError, FileNotFoundError, NotADirectoryError, ValueError):
-        # Exit with non-zero status to indicate error
-        exit(1)
-    except Exception as e:
-        print(f"Fatal error: {e}")
-        exit(1)
-
-    return 0
-
-
-if __name__ == "__main__":
-    main()

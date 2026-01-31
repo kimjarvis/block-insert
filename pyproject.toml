@@ -1,9 +1,45 @@
 [project]
-name = "block-insert"
-version = "0.1.0"
-description = "Add your description here"
+name = "lineblocks"
+version = "0.0.1"
+description = "Lineblocks is a documentation synchronization tool that maintains consistency between code examples and their corresponding documentation."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
     "pytest>=9.0.2",
 ]
+license = { file = "LICENSE" }  # Points to the file containing the GPL v3 license
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+authors = [
+    {name = "Kim Jarvis", email = "kim.jarvis@tpfsystems.com"}
+]
+maintainers = [
+    {name = "Kim Jarvis", email = "kim.jarvis@tpfsystems.com"}
+]
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+# Include additional files in the package
+[tool.flit.module]
+name = "lineblocks"
+
+[tool.flit.sdist]
+include = [
+    "LICENSE",
+    "README.md"
+]
+
+[project.urls]
+Homepage = "http://reemote.org/index.html"
+Documentation = "https://github.com/kimjarvis/lineblocks"
+"Source Code" = "https://github.com/kimjarvis/lineblocks"
+"Bug Tracker" = "https://github.com/kimjarvis/lineblocks/issues"
+
+[project.scripts]
+reemote = "lineblocks.module:main"
+

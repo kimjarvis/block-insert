@@ -242,32 +242,3 @@ def block_insert(source_file: str, insert_directory_prefix: str, output_director
         raise
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Insert code blocks into Python/Markdown files based on markers.")
-    parser.add_argument("--source_file", required=True, help="Source file.")
-    parser.add_argument("--insert_directory_prefix", required=True, help="Base path for block files.")
-    parser.add_argument("--output_directory",
-                        help="Directory for generated files (preserves structure). If omitted, modifies sources in-place.")
-    parser.add_argument("--clear", action="store_true", help="Clear blocks without insertion.")
-    args = parser.parse_args()
-
-    try:
-        # Execute block insertion
-        block_insert(
-            source_file=args.source_file,
-            insert_directory_prefix=args.insert_directory_prefix,
-            output_directory=args.output_directory,
-            clear_mode=args.clear
-        )
-    except (OrphanedInsertEndMarkerError, FileNotFoundError, NotADirectoryError):
-        # Exit with non-zero status to indicate error
-        exit(1)
-    except Exception as e:
-        print(f"Fatal error: {e}")
-        exit(1)
-
-    return 0
-
-
-if __name__ == "__main__":
-    main()

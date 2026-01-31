@@ -87,6 +87,20 @@ def test_done_already():
 
     assert not os.path.exists(output_file), f"Output file not found: {output_file}"
 
+def test_insert_orphaned_end_marker():
+    """Test when a block end marker appears before any block extract marker."""
+    source_path = "tests/sources/insert_orphaned_end_marker.md"
+
+    with pytest.raises(OrphanedEndMarkerError) as exc_info:
+        block_extract(
+            source_path="tests/sources/insert_orphaned_end_marker.md",
+            extract_path="tests/snippets"
+        )
+
+    assert "Orphaned block end marker" in str(exc_info.value)
+    assert "insert_orphaned_end_marker.md" in str(exc_info.value)
+    # Should mention line 2 (since line numbers are 1-based)
+    assert "line 2" in str(exc_info.value) or "at line" in str(exc_info.value)
 
 
 

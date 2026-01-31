@@ -2,6 +2,17 @@ import argparse
 import re
 from pathlib import Path
 
+class OrphanedEndMarkerError(Exception):
+    """Exception raised when a block end marker is found without a corresponding start marker."""
+
+    def __init__(self, source_file, line_number, line_content=""):
+        self.source_file = source_file
+        self.line_number = line_number
+        self.line_content = line_content
+        message = (f"Orphaned block end marker at line {line_number} "
+                   f"in file '{source_file}'. "
+                   f"No corresponding '# block insert' or '<!-- block insert -->' marker found.")
+        super().__init__(message)
 
 def indent_lines(lines, spaces):
     indented = []
@@ -78,6 +89,9 @@ def process_file(source_file, insert_directory_prefix, output_root=None, source_
     changed = False
     source_file = Path(source_file).resolve()
 
+    # Track if we're inside a block (to detect orphaned end markers)
+    inside_block = False
+
     # Determine output path
     if output_root is None:
         # In-place modification
@@ -94,6 +108,16 @@ def process_file(source_file, insert_directory_prefix, output_root=None, source_
 
     while i < len(original_lines):
         line = original_lines[i]
+
+        # Check if this is an end marker without a start marker
+        if is_end_marker(line) and not inside_block:
+            # This is an orphaned end marker
+            raise OrphanedEndMarkerError(
+                source_file=str(source_file),
+                line_number=i + 1,
+                line_content=line.strip()
+            )
+
         info = extract_block_info(line, insert_directory_prefix)
 
         if info:
@@ -160,8 +184,14 @@ def process_file(source_file, insert_directory_prefix, output_root=None, source_
                 output.extend(replacement)
                 changed = True
 
+            # Set inside_block to True when we find a start marker
+            inside_block = True
             i = next_i
         else:
+            if is_end_marker(line):
+                # We've reached the end of a block
+                inside_block = False
+
             if clear_mode and is_end_marker(line):
                 changed = True
             else:
@@ -170,13 +200,13 @@ def process_file(source_file, insert_directory_prefix, output_root=None, source_
 
     # Write output if changed
     if output != original_lines:
-        # Ensure output directory exists
-        output_directory.parent.mkdir(parents=True, exist_ok=True)
+        # Ensure output directory exists - raise exception if it doesn't
+        if not output_directory.parent.exists():
+            raise FileNotFoundError(f"Output directory '{output_directory.parent}' does not exist.")
         with open(output_directory, "w") as f:
             f.writelines(output)
         action = "Created" if output_root else "Updated"
         print(f"{action} file: {output_directory}")
-
 
 def process_path(source_file, insert_directory_prefix, output_directory=None, clear_mode=False):
     source_file = Path(source_file).expanduser().resolve()
@@ -201,11 +231,12 @@ def process_path(source_file, insert_directory_prefix, output_directory=None, cl
     output_root = None
     if output_directory:
         output_root = Path(output_directory).expanduser().resolve()
-        # Ensure output_directory is a directory
-        if output_root.exists() and not output_root.is_dir():
-            raise ValueError(f"Output path '{output_directory}' must be a directory, not a file.")
+        # Ensure output_directory exists - raise exception if it doesn't
         if not output_root.exists():
-            output_root.mkdir(parents=True, exist_ok=True)
+            raise FileNotFoundError(f"Output directory '{output_root}' does not exist.")
+        # Ensure output_directory is a directory
+        if not output_root.is_dir():
+            raise ValueError(f"Output path '{output_directory}' must be a directory, not a file.")
 
         # Check that source file is not within the output directory
         try:

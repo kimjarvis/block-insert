@@ -2,6 +2,7 @@ import argparse
 import re
 from pathlib import Path
 
+
 class OrphanedEndMarkerError(Exception):
     """Exception raised when a block end marker is found without a corresponding start marker."""
 
@@ -13,6 +14,7 @@ class OrphanedEndMarkerError(Exception):
                    f"in file '{source_file}'. "
                    f"No corresponding '# block insert' or '<!-- block insert -->' marker found.")
         super().__init__(message)
+
 
 def indent_lines(lines, spaces):
     indented = []
@@ -208,12 +210,13 @@ def process_file(source_file, insert_directory_prefix, output_root=None, source_
         action = "Created" if output_root else "Updated"
         print(f"{action} file: {output_directory}")
 
+
 def process_path(source_file, insert_directory_prefix, output_directory=None, clear_mode=False):
     source_file = Path(source_file).expanduser().resolve()
     insert_directory_prefix = Path(insert_directory_prefix).expanduser().resolve()
 
     if not source_file.exists():
-        raise ValueError(f"Source path '{source_file}' does not exist.")
+        raise FileNotFoundError(f"Source path '{source_file}' does not exist.")
 
     # Ensure source_file is a file
     if not source_file.is_file():
@@ -225,7 +228,7 @@ def process_path(source_file, insert_directory_prefix, output_directory=None, cl
 
     # Ensure insert_directory_prefix is a directory
     if not insert_directory_prefix.is_dir():
-        raise ValueError(f"Insert path '{insert_directory_prefix}' is not a directory.")
+        raise NotADirectoryError(f"Insert path '{insert_directory_prefix}' is not a directory.")
 
     # Resolve output path if provided
     output_root = None
@@ -236,7 +239,7 @@ def process_path(source_file, insert_directory_prefix, output_directory=None, cl
             raise FileNotFoundError(f"Output directory '{output_root}' does not exist.")
         # Ensure output_directory is a directory
         if not output_root.is_dir():
-            raise ValueError(f"Output path '{output_directory}' must be a directory, not a file.")
+            raise NotADirectoryError(f"Output path '{output_directory}' must be a directory, not a file.")
 
         # Check that source file is not within the output directory
         try:
@@ -252,14 +255,18 @@ def process_path(source_file, insert_directory_prefix, output_directory=None, cl
     process_file(source_file, insert_directory_prefix, output_root=output_root, clear_mode=clear_mode)
 
 
-def block_insert(source_file: str, insert_directory_prefix: str, output_directory: str = None, clear_mode: bool = False):
+def block_insert(source_file: str, insert_directory_prefix: str, output_directory: str = None,
+                 clear_mode: bool = False):
     """Insert code blocks into Python/Markdown files based on markers.
     """
     try:
         process_path(source_file, insert_directory_prefix, output_directory, clear_mode)
-    except ValueError as e:
-        # Re-raise the exception as requested
-        raise e
+    except (FileNotFoundError, NotADirectoryError) as e:
+        print(f"Error: {e}")
+        raise  # Re-raise to exit with non-zero status
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise
 
 
 def main():
@@ -279,9 +286,12 @@ def main():
             output_directory=args.output_directory,
             clear_mode=args.clear
         )
+    except (OrphanedEndMarkerError, FileNotFoundError, NotADirectoryError):
+        # Exit with non-zero status to indicate error
+        exit(1)
     except Exception as e:
-        print(f"Error: {e}")
-        return 1
+        print(f"Fatal error: {e}")
+        exit(1)
 
     return 0
 

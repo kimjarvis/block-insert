@@ -2,8 +2,8 @@ import argparse
 import re
 from pathlib import Path
 
-from exceptions import OrphanedInsertEndMarkerError
-from common import Common
+from lineblocks.exceptions import OrphanedInsertEndMarkerError
+from lineblocks.common import Common
 
 
 class BlockInsert(Common):

@@ -1,7 +1,7 @@
 import argparse
-from block_extract import BlockExtract
-from block_insert import BlockInsert
-from exceptions import UnclosedBlockError, OrphanedExtractEndMarkerError
+from lineblocks.block_extract import BlockExtract
+from lineblocks.block_insert import BlockInsert
+from lineblocks.exceptions import UnclosedBlockError, OrphanedExtractEndMarkerError
 
 
 def lineblocks(action: str,

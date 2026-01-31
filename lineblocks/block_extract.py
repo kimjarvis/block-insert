@@ -2,8 +2,8 @@ import argparse
 import re
 from pathlib import Path
 
-from exceptions import OrphanedExtractEndMarkerError, UnclosedBlockError
-from common import Common
+from lineblocks.exceptions import OrphanedExtractEndMarkerError, UnclosedBlockError
+from lineblocks.common import Common
 
 class BlockExtract(Common):
     def __init__(self):

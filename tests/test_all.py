@@ -92,9 +92,9 @@ def test_insert_orphaned_end_marker():
     source_path = "tests/sources/insert_orphaned_end_marker.md"
 
     with pytest.raises(OrphanedInsertEndMarkerError) as exc_info:
-        block_extract(
-            source_path="tests/sources/insert_orphaned_end_marker.md",
-            extract_directory_prefix="tests/snippets"
+        block_insert(
+            source_file="tests/sources/insert_orphaned_end_marker.md",
+            insert_directory_prefix="tests/snippets"
         )
 
     assert "Orphaned block end marker" in str(exc_info.value)

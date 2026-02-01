@@ -21,7 +21,7 @@ pipx install lineblocks
 ```
 # Usage
 
-Add markers to source code
+Add markers to the source code
 
 ```python
 def test_lineblocks():
@@ -34,8 +34,28 @@ def test_lineblocks():
 
 In your documentation, add markers to indicate where code examples should be inserted.
 
+%% markdown %%
+
+```python
+%% markdown %%
+```
+
+
 ```python
 <!-- block insert test.txt -->
+        """Test when a block extract marker has no corresponding end marker."""
+        source_path = "tests/sources/extract_orphaned_begin_marker.md"
+    
+        with pytest.raises(UnclosedBlockError) as exc_info:
+            block_extract(
+                source_path="tests/sources/extract_orphaned_begin_marker.md",
+                extract_directory_prefix="tests/snippets"
+            )
+    
+        assert "Unclosed block" in str(exc_info.value)
+        assert "extract_orphaned_begin_marker.md" in str(exc_info.value)
+        assert "Expected end marker" in str(exc_info.value)
+<!-- end insert -->
 ```
 
 Run the extraction process to create the file test.txt
@@ -43,3 +63,11 @@ Run the extraction process to create the file test.txt
 ```bash
 linebocks extract --source=README.md --prefix=.
 ```
+
+Run the insertion process to insert the code examples into your documentation.
+
+```bash
+linebocks insert --source=README.md --prefix=.
+```
+
+
